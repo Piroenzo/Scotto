@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Scotto - Gestión de Proyectos{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath fill='black' d='M416 208c17.7 0 32 14.3 32 32v176c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V240c0-17.7 14.3-32 32-32h384zm-272 64c-13.3 0-24 10.7-24 24v88c0 13.3 10.7 24 24 24s24-10.7 24-24v-88c0-13.3-10.7-24-24-24zm96-48c-13.3 0-24 10.7-24 24v136c0 13.3 10.7 24 24 24s24-10.7 24-24V248c0-13.3-10.7-24-24-24zm96 80c-13.3 0-24 10.7-24 24v56c0 13.3 10.7 24 24 24s24-10.7 24-24v-56c0-13.3-10.7-24-24-24z'/%3E%3C/svg%3E">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 -->
@@ -541,6 +542,20 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <footer class="footer mt-auto py-3 bg-dark text-light border-0 shadow-sm" style="font-size: 1rem;">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-chart-bar me-2"></i>
+                <span>Scotto | Hecho por <strong>Piro</strong></span>
+            </div>
+            <div>
+                <a href="https://github.com/Piroenzo/Scotto" class="text-light text-decoration-none" target="_blank">
+                    <i class="fab fa-github me-1"></i>GitHub
+                </a>
+            </div>
+        </div>
+    </footer>
 
     <script>
         // Funciones globales de JavaScript
