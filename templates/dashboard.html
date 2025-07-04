@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Scotto{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="text-white display-5 mb-0">
+        <i class="fas fa-tachometer-alt"></i> Mi Dashboard
+    </h1>
+    <div class="d-flex gap-3 align-items-center">
+        <div class="position-relative">
+            <input type="text" id="searchInput" class="form-control ps-5" placeholder="Buscar tableros..." style="width: 300px;">
+            <i class="fas fa-search position-absolute" style="left: 1rem; top: 50%; transform: translateY(-50%); color: #666;"></i>
+        </div>
+        <button class="btn btn-primary" onclick="showModal('createBoardModal')">
+            <i class="fas fa-plus"></i> Nuevo Tablero
+        </button>
+    </div>
+</div>
+
+<!-- Tableros Propios -->
+<div class="mb-5">
+    <h2 class="text-white mb-3 fs-3">
+        <i class="fas fa-crown"></i> Mis Tableros
+    </h2>
+    {% if owned_boards %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for board in owned_boards %}
+            <div class="col">
+                <div class="card h-100 shadow board-card-hover" role="button" onclick="window.location.href='{{ url_for('board', board_id=board.id) }}'">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ board.title }}</h5>
+                        <p class="card-text text-muted">{{ board.description or 'Sin descripción' }}</p>
+                        <div class="mb-2 small text-secondary">
+                            <i class="fas fa-calendar"></i> Creado el {{ board.created_at.strftime('%d/%m/%Y') }}
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); editBoard({{ board.id }}, '{{ board.title }}', '{{ board.description or '' }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); deleteBoard({{ board.id }})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="event.stopPropagation(); showInviteModal({{ board.id }})">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card text-center p-5">
+            <div class="display-3 text-primary mb-3">
+                <i class="fas fa-columns"></i>
+            </div>
+            <h3 class="mb-3">No tienes tableros aún</h3>
+            <p class="text-muted mb-4">
+                Crea tu primer tablero para empezar a organizar tus proyectos
+            </p>
+            <button class="btn btn-primary" onclick="showModal('createBoardModal')">
+                <i class="fas fa-plus"></i> Crear Primer Tablero
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Tableros Compartidos -->
+{% if shared_boards %}
+<div style="margin-bottom: 3rem;">
+    <h2 style="color: #23272f; margin-bottom: 1rem; font-size: 1.8rem;">
+        <i class="fas fa-users"></i> Tableros Compartidos
+    </h2>
+    <div class="grid grid-3">
+        {% for board in shared_boards %}
+        <div class="board-card" onclick="window.location.href='{{ url_for('board', board_id=board.id) }}'">
+            <div class="board-title">{{ board.title }}</div>
+            <div class="board-description">{{ board.description or 'Sin descripción' }}</div>
+            <div class="board-meta">
+                <i class="fas fa-user"></i> Propietario: {{ board.owner.username }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal Crear Tablero -->
+<div id="createBoardModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('createBoardModal')">&times;</span>
+        <h3 style="margin-bottom: 1.5rem;">
+            <i class="fas fa-plus"></i> Crear Nuevo Tablero
+        </h3>
+        <form id="createBoardForm">
+            <div class="form-group">
+                <label for="boardTitle">Título del Tablero</label>
+                <input type="text" id="boardTitle" class="form-control" required placeholder="Ej: Proyecto Web">
+            </div>
+            <div class="form-group">
+                <label for="boardDescription">Descripción (opcional)</label>
+                <textarea id="boardDescription" class="form-control" rows="3" placeholder="Describe tu proyecto..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="boardColor">Color del Tablero</label>
+                <input type="color" id="boardColor" class="form-control" value="#667eea">
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('createBoardModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Crear Tablero</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Tablero -->
+<div id="editBoardModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('editBoardModal')">&times;</span>
+        <h3 style="margin-bottom: 1.5rem;">
+            <i class="fas fa-edit"></i> Editar Tablero
+        </h3>
+        <form id="editBoardForm">
+            <input type="hidden" id="editBoardId">
+            <div class="form-group">
+                <label for="editBoardTitle">Título del Tablero</label>
+                <input type="text" id="editBoardTitle" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="editBoardDescription">Descripción</label>
+                <textarea id="editBoardDescription" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="editBoardColor">Color del Tablero</label>
+                <input type="color" id="editBoardColor" class="form-control" value="#667eea">
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('editBoardModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Invitar Usuario -->
+<div id="inviteModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="hideModal('inviteModal')">&times;</span>
+        <h3 style="margin-bottom: 1.5rem;">
+            <i class="fas fa-user-plus"></i> Invitar Usuario
+        </h3>
+        <form id="inviteForm">
+            <input type="hidden" id="inviteBoardId">
+            <div class="form-group">
+                <label for="inviteEmail">Email del Usuario</label>
+                <input type="email" id="inviteEmail" class="form-control" required placeholder="usuario@ejemplo.com">
+            </div>
+            <div class="form-group">
+                <label for="invitePermission">Permiso</label>
+                <select id="invitePermission" class="form-control">
+                    <option value="true" selected>Puede editar</option>
+                    <option value="false">Solo vista</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('inviteModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Enviar Invitación</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="loading">
+    <div class="spinner"></div>
+    <p>Procesando...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Crear tablero
+document.getElementById('createBoardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('boardTitle').value;
+    const description = document.getElementById('boardDescription').value;
+    const color = document.getElementById('boardColor').value;
+    
+    // Mostrar indicador de carga sutil
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    submitBtn.disabled = true;
+    
+    fetch('/api/board', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            color: color
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            hideModal('createBoardModal');
+            // Limpiar el formulario
+            document.getElementById('boardTitle').value = '';
+            document.getElementById('boardDescription').value = '';
+            document.getElementById('boardColor').value = '#667eea';
+            
+            // Agregar el nuevo tablero dinámicamente
+            addBoardToUI(data);
+            
+            // Mostrar mensaje de éxito
+            showSuccessMessage('Tablero creado exitosamente');
+        }
+    })
+    .catch(error => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        alert('Error al crear el tablero');
+        console.error('Error:', error);
+    });
+});
+
+// Función para agregar tablero dinámicamente a la UI
+function addBoardToUI(boardData) {
+    console.log('Agregando tablero a la UI:', boardData);
+    
+    const ownedBoardsContainer = document.querySelector('.row.row-cols-1.row-cols-md-2.row-cols-lg-3.g-4');
+    console.log('Contenedor encontrado:', ownedBoardsContainer);
+    
+    if (ownedBoardsContainer) {
+        const newBoardHTML = `
+            <div class="col">
+                <div class="card h-100 shadow board-card-hover" role="button" onclick="window.location.href='/board/${boardData.id}'">
+                    <div class="card-body">
+                        <h5 class="card-title">${boardData.title}</h5>
+                        <p class="card-text text-muted">${boardData.description || 'Sin descripción'}</p>
+                        <div class="mb-2 small text-secondary">
+                            <i class="fas fa-calendar"></i> Creado el ${new Date().toLocaleDateString()}
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); editBoard(${boardData.id}, '${boardData.title}', '${boardData.description || ''}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); deleteBoard(${boardData.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="event.stopPropagation(); showInviteModal(${boardData.id})">
+                                <i class="fas fa-user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        ownedBoardsContainer.insertAdjacentHTML('beforeend', newBoardHTML);
+        console.log('Tablero agregado exitosamente');
+    } else {
+        console.error('No se encontró el contenedor de tableros');
+        // Si no hay contenedor, recargar la página como fallback
+        location.reload();
+    }
+}
+
+// Función para mostrar mensaje de éxito
+function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+
+// Editar tablero
+function editBoard(boardId, title, description) {
+    document.getElementById('editBoardId').value = boardId;
+    document.getElementById('editBoardTitle').value = title;
+    document.getElementById('editBoardDescription').value = description;
+    document.getElementById('editBoardColor').value = document.getElementById('boardColor').value;
+    showModal('editBoardModal');
+}
+
+document.getElementById('editBoardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const boardId = document.getElementById('editBoardId').value;
+    const title = document.getElementById('editBoardTitle').value;
+    const description = document.getElementById('editBoardDescription').value;
+    const color = document.getElementById('editBoardColor').value;
+    
+    showLoading();
+    
+    fetch(`/api/board/${boardId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            color: color
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            hideModal('editBoardModal');
+            // Actualizar el tablero dinámicamente
+            updateBoardInUI(boardId, data);
+            showSuccessMessage('Tablero actualizado exitosamente');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Error al editar el tablero');
+        console.error('Error:', error);
+    });
+});
+
+// Función para actualizar tablero dinámicamente en la UI
+function updateBoardInUI(boardId, boardData) {
+    const boardElement = document.querySelector(`[onclick*="/board/${boardId}"]`);
+    if (boardElement) {
+        const titleElement = boardElement.querySelector('.card-title');
+        const descriptionElement = boardElement.querySelector('.card-text');
+        
+        if (titleElement) titleElement.textContent = boardData.title;
+        if (descriptionElement) descriptionElement.textContent = boardData.description || 'Sin descripción';
+    }
+}
+
+// Eliminar tablero
+function deleteBoard(boardId) {
+    if (confirm('¿Estás seguro de que quieres eliminar este tablero? Esta acción no se puede deshacer.')) {
+        showLoading();
+        
+        fetch(`/api/board/${boardId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                // Eliminar el tablero de la UI dinámicamente
+                removeBoardFromUI(boardId);
+                showSuccessMessage('Tablero eliminado exitosamente');
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            alert('Error al eliminar el tablero');
+            console.error('Error:', error);
+        });
+    }
+}
+
+// Función para eliminar tablero dinámicamente de la UI
+function removeBoardFromUI(boardId) {
+    const boardElement = document.querySelector(`[onclick*="/board/${boardId}"]`);
+    if (boardElement) {
+        const colElement = boardElement.closest('.col');
+        if (colElement) {
+            colElement.remove();
+        }
+    }
+}
+
+// Invitar usuario
+function showInviteModal(boardId) {
+    document.getElementById('inviteBoardId').value = boardId;
+    document.getElementById('inviteEmail').value = '';
+    showModal('inviteModal');
+}
+
+document.getElementById('inviteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const boardId = document.getElementById('inviteBoardId').value;
+    const email = document.getElementById('inviteEmail').value;
+    const canEdit = document.getElementById('invitePermission').value === 'true';
+    
+    showLoading();
+    
+    fetch(`/api/board/${boardId}/invite`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            email: email,
+            can_edit: canEdit
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.error) {
+            alert('Error: ' + data.error);
+        } else {
+            hideModal('inviteModal');
+            alert('Invitación enviada exitosamente');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        alert('Error al enviar la invitación');
+        console.error('Error:', error);
+    });
+});
+
+// Funcionalidad de búsqueda
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const boardCards = document.querySelectorAll('.board-card');
+    
+    boardCards.forEach(card => {
+        const title = card.querySelector('.board-title').textContent.toLowerCase();
+        const description = card.querySelector('.board-description').textContent.toLowerCase();
+        
+        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %} 

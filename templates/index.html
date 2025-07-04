@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Scotto - Gestión de Proyectos{% endblock %}
+
+{% block content %}
+<div class="hero-section" style="text-align: center; padding: 4rem 0;">
+    <h1 style="font-size: 3.5rem; font-weight: 700; margin-bottom: 1rem; color: white;">
+        Organiza tus proyectos con <span style="color: #ffd700;">Scotto</span>
+    </h1>
+    <p style="font-size: 1.3rem; margin-bottom: 2rem; color: rgba(255, 255, 255, 0.9);">
+        La herramienta perfecta para gestionar tareas, colaborar en equipo y alcanzar tus objetivos
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+            <i class="fas fa-rocket"></i> Comenzar Gratis
+        </a>
+        <a href="{{ url_for('login') }}" class="btn btn-secondary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+        </a>
+    </div>
+</div>
+
+<div class="features-section" style="margin-top: 4rem;">
+    <div class="grid grid-3">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;">
+                <i class="fas fa-columns"></i>
+            </div>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Tableros Kanban</h3>
+            <p style="color: #666; line-height: 1.6;">
+                Organiza tus tareas en listas visuales. Arrastra y suelta para mover elementos entre etapas.
+            </p>
+        </div>
+        
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Colaboración en Equipo</h3>
+            <p style="color: #666; line-height: 1.6;">
+                Invita a tu equipo, comparte tableros y trabaja juntos en tiempo real.
+            </p>
+        </div>
+        
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;">
+                <i class="fas fa-bell"></i>
+            </div>
+            <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Notificaciones Inteligentes</h3>
+            <p style="color: #666; line-height: 1.6;">
+                Recibe alertas por email cuando las tareas estén próximas a vencer.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="demo-section" style="margin-top: 4rem; text-align: center;">
+    <h2 style="font-size: 2.5rem; margin-bottom: 2rem; color: white;">¿Cómo funciona?</h2>
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h4 style="color: #333; margin-bottom: 0.5rem;">Por Hacer</h4>
+                    <div style="background: white; border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; border-left: 4px solid #667eea;">
+                        Diseñar interfaz
+                    </div>
+                    <div style="background: white; border-radius: 4px; padding: 0.5rem; border-left: 4px solid #667eea;">
+                        Crear base de datos
+                    </div>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 200px;">
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h4 style="color: #333; margin-bottom: 0.5rem;">En Progreso</h4>
+                    <div style="background: white; border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; border-left: 4px solid #ff9800;">
+                        Implementar API
+                    </div>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 200px;">
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h4 style="color: #333; margin-bottom: 0.5rem;">Completado</h4>
+                    <div style="background: white; border-radius: 4px; padding: 0.5rem; margin-bottom: 0.5rem; border-left: 4px solid #4caf50;">
+                        Configurar servidor
+                    </div>
+                    <div style="background: white; border-radius: 4px; padding: 0.5rem; border-left: 4px solid #4caf50;">
+                        Instalar dependencias
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cta-section" style="margin-top: 4rem; text-align: center;">
+    <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: white;">¿Listo para empezar?</h2>
+    <p style="font-size: 1.2rem; margin-bottom: 2rem; color: rgba(255, 255, 255, 0.9);">
+        Únete a miles de usuarios que ya están organizando sus proyectos con Scotto
+    </p>
+    <a href="{{ url_for('register') }}" class="btn btn-primary" style="font-size: 1.2rem; padding: 1rem 2.5rem;">
+        <i class="fas fa-plus"></i> Crear Cuenta Gratuita
+    </a>
+</div>
+{% endblock %} 

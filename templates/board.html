@@ -1,0 +1,961 @@
+{% extends "base.html" %}
+
+{% block title %}{{ board.title }} - Scotto{% endblock %}
+
+{% block content %}
+<div style="background: #f5f6fa; min-height: 100vh; padding: 0;">
+    <div style="background: {{ board.color }}; padding: 2.5rem 0 1.5rem 0; border-bottom-left-radius: 32px; border-bottom-right-radius: 32px; box-shadow: 0 2px 16px rgba(44,62,80,0.07);">
+        <div class="container" style="max-width: 1200px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div>
+                    <h1 style="color: white; font-size: 2.5rem; margin-bottom: 0.5rem;">
+                        <i class="fas fa-columns"></i> {{ board.title }}
+                    </h1>
+                    {% if board.description %}
+                    <p style="color: rgba(255, 255, 255, 0.8); font-size: 1.1rem;">
+                        {{ board.description }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-secondary" onclick="showModal('createListModal')">
+                        <i class="fas fa-plus"></i> Nueva Lista
+                    </button>
+                    <a href="{{ url_for('board_calendar', board_id=board.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-calendar-alt"></i> Calendario
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container" style="max-width: 1200px;">
+        <div class="kanban-board d-flex flex-row gap-4 overflow-auto pb-4 justify-content-center" id="kanbanBoard" style="min-height: 60vh; background: transparent; padding-top: 2.5rem;">
+            {% for list_item in lists %}
+            <div class="list-container bg-white border border-1 rounded-4 p-3 d-flex flex-column" data-list-id="{{ list_item.id }}" draggable="true" style="min-width: 300px; max-width: 320px; box-shadow: none;">
+                <div class="list-header d-flex justify-content-between align-items-center mb-2">
+                    <div class="list-title fw-semibold fs-6" id="list-title-{{ list_item.id }}">{{ list_item.title }}</div>
+                    <div class="actions d-flex gap-1">
+                        <button class="btn btn-link p-1 text-muted" onclick="editList({{ list_item.id }}, '{{ list_item.title }}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-link p-1 text-muted" onclick="deleteList({{ list_item.id }})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="list-cards flex-grow-1 d-flex flex-column gap-2" id="list-cards-{{ list_item.id }}">
+                    {% for card in list_item.cards|sort(attribute='position') %}
+                    <div class="card-item bg-white border border-1 rounded-3 p-2 mb-1" data-card-id="{{ card.id }}" draggable="true" style="box-shadow: none; transition: border-color 0.2s, background 0.2s; cursor: grab;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="card-title fw-normal small">{{ card.title }}</div>
+                            <div class="priority-badge priority-{{ card.priority }} ms-2 text-capitalize small px-2 py-1 rounded-pill bg-light text-muted border border-1">{{ card.priority }}</div>
+                        </div>
+                        {% if card.description %}
+                        <div class="card-description text-muted small mb-1">{{ card.description[:100] }}{% if card.description|length > 100 %}...{% endif %}</div>
+                        {% endif %}
+                        {% if card.attachment %}
+                        <div class="card-attachment mb-2">
+                            {% set ext = card.attachment.split('.')[-1].lower() %}
+                            {% if ext in ['png', 'jpg', 'jpeg', 'gif'] %}
+                                <a href="/{{ card.attachment }}" target="_blank"><img src="/{{ card.attachment }}" alt="Adjunto" class="img-fluid rounded" style="max-width: 90px; max-height: 50px;"></a>
+                            {% else %}
+                                <a href="/{{ card.attachment }}" target="_blank" class="text-decoration-underline text-muted small">
+                                    <i class="fas fa-paperclip"></i> Descargar adjunto
+                                </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                {% if card.due_date %}
+                                <i class="fas fa-calendar"></i> {{ card.due_date.strftime('%d/%m/%Y') }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="actions d-flex gap-1 mt-1">
+                            <button class="btn btn-link p-1 text-muted" onclick="editCard({{ card.id }}, '{{ card.title }}', '{{ card.description or '' }}', '{{ card.priority }}', '{{ card.label }}', '{{ card.due_date.isoformat() if card.due_date else '' }}')" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-link p-1 text-muted" onclick="deleteCard({{ card.id }})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </div>
+                        {% if card.assignee %}
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="user-avatar d-inline-flex align-items-center justify-content-center rounded-circle bg-light text-dark fw-bold border border-1" style="width: 24px; height: 24px; font-size: 0.95rem; text-transform: uppercase;">
+                                {{ card.assignee.username[0] }}
+                            </span>
+                            <span class="text-muted small">{{ card.assignee.username }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-secondary mt-2 w-100" onclick="showCreateCardModal({{ list_item.id }})">
+                    <i class="fas fa-plus"></i> Agregar Tarjeta
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Botón para abrir el modal de etiquetas -->
+    <div style="margin-bottom: 1rem;">
+        <button class="btn btn-secondary" onclick="showModal('labelsModal')">
+            <i class="fas fa-tags"></i> Gestionar Etiquetas
+        </button>
+    </div>
+
+    <!-- Modal Crear Lista -->
+    <div id="createListModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('createListModal')">&times;</span>
+            <h3 style="margin-bottom: 1.5rem;">
+                <i class="fas fa-plus"></i> Crear Nueva Lista
+            </h3>
+            <form id="createListForm">
+                <div class="form-group">
+                    <label for="listTitle">Título de la Lista</label>
+                    <input type="text" id="listTitle" class="form-control" required placeholder="Ej: Por Hacer">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('createListModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Lista</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Lista -->
+    <div id="editListModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('editListModal')">&times;</span>
+            <h3 style="margin-bottom: 1.5rem;">
+                <i class="fas fa-edit"></i> Editar Lista
+            </h3>
+            <form id="editListForm">
+                <input type="hidden" id="editListId">
+                <div class="form-group">
+                    <label for="editListTitle">Título de la Lista</label>
+                    <input type="text" id="editListTitle" class="form-control" required>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('editListModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Crear Tarjeta -->
+    <div id="createCardModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('createCardModal')">&times;</span>
+            <h3 style="margin-bottom: 1.5rem;">
+                <i class="fas fa-plus"></i> Crear Nueva Tarjeta
+            </h3>
+            <form id="createCardForm" enctype="multipart/form-data">
+                <input type="hidden" id="createCardListId">
+                <div class="form-group">
+                    <label for="cardTitle">Título de la Tarjeta</label>
+                    <input type="text" id="cardTitle" class="form-control" required placeholder="Ej: Implementar login">
+                </div>
+                <div class="form-group">
+                    <label for="cardDescription">Descripción (opcional)</label>
+                    <textarea id="cardDescription" class="form-control" rows="3" placeholder="Describe la tarea..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="cardPriority">Prioridad</label>
+                    <select id="cardPriority" class="form-control">
+                        <option value="low">Baja</option>
+                        <option value="medium" selected>Media</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cardLabel">Etiqueta de Color</label>
+                    <select id="cardLabel" class="form-control">
+                        <option value="none">Sin etiqueta</option>
+                        <option value="red">Rojo</option>
+                        <option value="blue">Azul</option>
+                        <option value="green">Verde</option>
+                        <option value="yellow">Amarillo</option>
+                        <option value="purple">Púrpura</option>
+                        <option value="orange">Naranja</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cardDueDate">Fecha de Vencimiento (opcional)</label>
+                    <input type="datetime-local" id="cardDueDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="cardReminderDate">Recordatorio (opcional)</label>
+                    <input type="datetime-local" id="cardReminderDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="cardAttachment">Adjuntar archivo</label>
+                    <input type="file" id="cardAttachment" class="form-control">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('createCardModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Tarjeta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Tarjeta -->
+    <div id="editCardModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideModal('editCardModal')">&times;</span>
+            <h3 style="margin-bottom: 1.5rem;">
+                <i class="fas fa-edit"></i> Editar Tarjeta
+            </h3>
+            <form id="editCardForm" enctype="multipart/form-data">
+                <input type="hidden" id="editCardId">
+                <div class="form-group">
+                    <label for="editCardTitle">Título de la Tarjeta</label>
+                    <input type="text" id="editCardTitle" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="editCardDescription">Descripción</label>
+                    <textarea id="editCardDescription" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editCardPriority">Prioridad</label>
+                    <select id="editCardPriority" class="form-control">
+                        <option value="low">Baja</option>
+                        <option value="medium">Media</option>
+                        <option value="high">Alta</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editCardLabel">Etiqueta de Color</label>
+                    <select id="editCardLabel" class="form-control">
+                        <option value="none">Sin etiqueta</option>
+                        <option value="red">Rojo</option>
+                        <option value="blue">Azul</option>
+                        <option value="green">Verde</option>
+                        <option value="yellow">Amarillo</option>
+                        <option value="purple">Púrpura</option>
+                        <option value="orange">Naranja</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editCardDueDate">Fecha de Vencimiento</label>
+                    <input type="datetime-local" id="editCardDueDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="editCardReminderDate">Recordatorio</label>
+                    <input type="datetime-local" id="editCardReminderDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="editCardAttachment">Adjuntar archivo</label>
+                    <input type="file" id="editCardAttachment" class="form-control">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('editCardModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <span class="close" onclick="hideModal('confirmModal')">&times;</span>
+            <h3 id="confirmModalTitle" style="margin-bottom: 1rem;"></h3>
+            <p id="confirmModalText" style="margin-bottom: 2rem;"></p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" onclick="hideModal('confirmModal')">Cancelar</button>
+                <button class="btn btn-danger" id="confirmModalAccept">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Etiquetas -->
+    <div id="labelsModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close" onclick="hideModal('labelsModal')">&times;</span>
+            <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-tags"></i> Etiquetas del Tablero</h3>
+            <div id="labelsList"></div>
+            <form id="createLabelForm" style="margin-top: 2rem;">
+                <div class="form-group">
+                    <label for="labelName">Nombre</label>
+                    <input type="text" id="labelName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="labelColor">Color</label>
+                    <input type="color" id="labelColor" class="form-control" value="#667eea">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary">Crear Etiqueta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Procesando...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let draggedElement = null;
+let draggedList = null;
+
+// Drag and Drop functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card-item');
+    const lists = document.querySelectorAll('.list-cards');
+    
+    cards.forEach(card => {
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+    });
+    
+    const listContainers = document.querySelectorAll('.list-container');
+    listContainers.forEach(list => {
+        list.addEventListener('dragstart', function(e) {
+            draggedList = this;
+            this.classList.add('dragging-list');
+        });
+        list.addEventListener('dragend', function(e) {
+            this.classList.remove('dragging-list');
+            if (draggedList) {
+                // Obtener el board_id desde un atributo data o variable global
+                const boardId = {{ board.id }};
+                sendListOrder(boardId);
+            }
+            draggedList = null;
+        });
+        list.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+        list.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (draggedList && draggedList !== this) {
+                this.parentNode.insertBefore(draggedList, this);
+            }
+        });
+    });
+});
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    this.style.boxShadow = '0 8px 32px rgba(102,126,234,0.25)';
+    this.style.transform = 'scale(1.04) rotate(2deg)';
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    this.style.boxShadow = '';
+    this.style.transform = '';
+    draggedElement = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDragEnter(e) {
+    e.preventDefault();
+    this.classList.add('drag-over');
+    this.style.background = '#e3e8ff';
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+    this.style.background = '';
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    this.style.background = '';
+    
+    if (draggedElement) {
+        const listId = this.parentElement.dataset.listId;
+        const cardId = draggedElement.dataset.cardId;
+        const cards = Array.from(this.children);
+        const dropIndex = cards.length;
+        
+        // Mover la tarjeta visualmente
+        this.appendChild(draggedElement);
+        
+        // Enviar actualización al servidor
+        fetch(`/api/card/${cardId}/move`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                list_id: parseInt(listId),
+                position: dropIndex
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error('Error:', data.error);
+                location.reload(); // Recargar si hay error
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            location.reload();
+        });
+    }
+}
+
+// Crear lista
+document.getElementById('createListForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const title = document.getElementById('listTitle').value;
+    
+    // Mostrar indicador de carga sutil
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    submitBtn.disabled = true;
+    
+    fetch('/api/list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            board_id: {{ board.id }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.error) {
+            showToast('Error: ' + data.error, 'error');
+        } else {
+            hideModal('createListModal');
+            // Limpiar el formulario
+            document.getElementById('listTitle').value = '';
+            
+            // Agregar la nueva lista dinámicamente
+            addListToUI(data);
+            
+            showToast('Lista creada exitosamente', 'success');
+        }
+    })
+    .catch(error => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        showToast('Error al crear la lista', 'error');
+        console.error('Error:', error);
+    });
+});
+
+// Función para agregar lista dinámicamente a la UI
+function addListToUI(listData) {
+    console.log('Agregando lista a la UI:', listData);
+    
+    const listsContainer = document.querySelector('#kanbanBoard');
+    console.log('Contenedor de listas encontrado:', listsContainer);
+    
+    if (listsContainer) {
+        const newListHTML = `
+            <div class="list-container bg-white border border-1 rounded-4 p-3 d-flex flex-column" data-list-id="${listData.id}" draggable="true" style="min-width: 300px; max-width: 320px; box-shadow: none;">
+                <div class="list-header d-flex justify-content-between align-items-center mb-2">
+                    <div class="list-title fw-semibold fs-6" id="list-title-${listData.id}">${listData.title}</div>
+                    <div class="actions d-flex gap-1">
+                        <button class="btn btn-link p-1 text-muted" onclick="editList(${listData.id}, '${listData.title}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-link p-1 text-muted" onclick="deleteList(${listData.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="list-cards flex-grow-1 d-flex flex-column gap-2" id="list-cards-${listData.id}">
+                    <!-- Las tarjetas se cargarán aquí -->
+                </div>
+                <button class="btn btn-secondary mt-2 w-100" onclick="showCreateCardModal(${listData.id})">
+                    <i class="fas fa-plus"></i> Agregar Tarjeta
+                </button>
+            </div>
+        `;
+        
+        listsContainer.insertAdjacentHTML('beforeend', newListHTML);
+        console.log('Lista agregada exitosamente');
+    } else {
+        console.error('No se encontró el contenedor de listas');
+        // Si no hay contenedor, recargar la página como fallback
+        location.reload();
+    }
+}
+
+// Editar lista
+function editList(listId, title) {
+    document.getElementById('editListId').value = listId;
+    document.getElementById('editListTitle').value = title;
+    showModal('editListModal');
+}
+
+document.getElementById('editListForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const listId = document.getElementById('editListId').value;
+    const title = document.getElementById('editListTitle').value;
+    
+    showLoading();
+    
+    fetch(`/api/list/${listId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.error) {
+            showToast('Error: ' + data.error, 'error');
+        } else {
+            hideModal('editListModal');
+            showToast('Lista editada exitosamente', 'success');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showToast('Error al editar la lista', 'error');
+        console.error('Error:', error);
+    });
+});
+
+// Modal de confirmación reutilizable
+function showConfirmModal(title, text, onAccept) {
+    document.getElementById('confirmModalTitle').innerText = title;
+    document.getElementById('confirmModalText').innerText = text;
+    showModal('confirmModal');
+    const acceptBtn = document.getElementById('confirmModalAccept');
+    // Limpiar listeners anteriores
+    const newBtn = acceptBtn.cloneNode(true);
+    acceptBtn.parentNode.replaceChild(newBtn, acceptBtn);
+    newBtn.onclick = function() {
+        hideModal('confirmModal');
+        onAccept();
+    };
+}
+
+// Eliminar lista con confirmación
+function deleteList(listId) {
+    showConfirmModal(
+        'Eliminar Lista',
+        '¿Estás seguro de que quieres eliminar esta lista? Se eliminarán todas las tarjetas.',
+        function() {
+            showLoading();
+            fetch(`/api/list/${listId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    showToast('Error: ' + data.error, 'error');
+                } else {
+                    // Eliminar la lista de la UI dinámicamente
+                    removeListFromUI(listId);
+                    showToast('Lista eliminada', 'success');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('Error al eliminar la lista', 'error');
+                console.error('Error:', error);
+            });
+        }
+    );
+}
+
+// Función para eliminar lista dinámicamente de la UI
+function removeListFromUI(listId) {
+    const listElement = document.querySelector(`[data-list-id="${listId}"]`);
+    if (listElement) {
+        listElement.remove();
+    }
+}
+
+// Crear tarjeta
+function showCreateCardModal(listId) {
+    document.getElementById('createCardListId').value = listId;
+    document.getElementById('cardTitle').value = '';
+    document.getElementById('cardDescription').value = '';
+    document.getElementById('cardPriority').value = 'medium';
+    document.getElementById('cardLabel').value = 'none';
+    document.getElementById('cardDueDate').value = '';
+    document.getElementById('cardReminderDate').value = '';
+    showModal('createCardModal');
+}
+
+document.getElementById('createCardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const listId = document.getElementById('createCardListId').value;
+    const title = document.getElementById('cardTitle').value;
+    const description = document.getElementById('cardDescription').value;
+    const priority = document.getElementById('cardPriority').value;
+    const label = document.getElementById('cardLabel').value;
+    const dueDate = document.getElementById('cardDueDate').value;
+    const reminderDate = document.getElementById('cardReminderDate').value;
+    const attachment = document.getElementById('cardAttachment').files[0];
+    
+    // Mostrar indicador de carga sutil
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+    submitBtn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('list_id', parseInt(listId));
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('priority', priority);
+    formData.append('label', label);
+    if (dueDate) formData.append('due_date', new Date(dueDate).toISOString());
+    if (reminderDate) formData.append('reminder_date', new Date(reminderDate).toISOString());
+    if (attachment) formData.append('attachment', attachment);
+    
+    fetch('/api/card', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        if (data.error) {
+            showToast('Error: ' + data.error, 'error');
+        } else {
+            hideModal('createCardModal');
+            // Limpiar el formulario
+            document.getElementById('cardTitle').value = '';
+            document.getElementById('cardDescription').value = '';
+            document.getElementById('cardPriority').value = 'medium';
+            document.getElementById('cardLabel').value = 'none';
+            document.getElementById('cardDueDate').value = '';
+            document.getElementById('cardReminderDate').value = '';
+            document.getElementById('cardAttachment').value = '';
+            
+            // Agregar la nueva tarjeta dinámicamente
+            addCardToUI(data, listId);
+            
+            showToast('Tarjeta creada exitosamente', 'success');
+        }
+    })
+    .catch(error => {
+        // Restaurar botón
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        
+        showToast('Error al crear la tarjeta', 'error');
+        console.error('Error:', error);
+    });
+});
+
+// Función para agregar tarjeta dinámicamente a la UI
+function addCardToUI(cardData, listId) {
+    console.log('Agregando tarjeta a la UI:', cardData, 'en lista:', listId);
+    
+    const cardsContainer = document.querySelector(`#list-cards-${listId}`);
+    console.log('Contenedor de tarjetas encontrado:', cardsContainer);
+    
+    if (cardsContainer) {
+        const priorityClass = getPriorityClass(cardData.priority);
+        const dueDateText = cardData.due_date ? new Date(cardData.due_date).toLocaleDateString() : '';
+        
+        const newCardHTML = `
+            <div class="card-item bg-white border border-1 rounded-3 p-2 mb-1" data-card-id="${cardData.id}" draggable="true" style="box-shadow: none; transition: border-color 0.2s, background 0.2s; cursor: grab;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="card-title fw-normal small">${cardData.title}</div>
+                    <div class="priority-badge priority-${cardData.priority} ms-2 text-capitalize small px-2 py-1 rounded-pill bg-light text-muted border border-1">${cardData.priority}</div>
+                </div>
+                ${cardData.description ? `<div class="card-description text-muted small mb-1">${cardData.description.length > 100 ? cardData.description.substring(0, 100) + '...' : cardData.description}</div>` : ''}
+                ${cardData.attachment ? `<div class="card-attachment mb-2"><a href="/${cardData.attachment}" target="_blank" class="text-decoration-underline text-muted small"><i class="fas fa-paperclip"></i> Descargar adjunto</a></div>` : ''}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div>
+                        ${dueDateText ? `<i class="fas fa-calendar"></i> ${dueDateText}` : ''}
+                    </div>
+                </div>
+                <div class="actions d-flex gap-1 mt-1">
+                    <button class="btn btn-link p-1 text-muted" onclick="editCard(${cardData.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-link p-1 text-muted" onclick="deleteCard(${cardData.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+        
+        cardsContainer.insertAdjacentHTML('beforeend', newCardHTML);
+        console.log('Tarjeta agregada exitosamente');
+    } else {
+        console.error('No se encontró el contenedor de tarjetas para la lista:', listId);
+        // Si no hay contenedor, recargar la página como fallback
+        location.reload();
+    }
+}
+
+// Función auxiliar para obtener la clase CSS de prioridad
+function getPriorityClass(priority) {
+    switch(priority) {
+        case 'high': return 'bg-danger';
+        case 'medium': return 'bg-warning';
+        case 'low': return 'bg-success';
+        default: return 'bg-secondary';
+    }
+}
+
+// Conversión robusta para datetime-local
+function toDatetimeLocal(fecha) {
+    if (!fecha) return '';
+    // Si la fecha ya viene en formato 'YYYY-MM-DDTHH:MM', la devolvemos tal cual
+    if (fecha.length === 16 && fecha[10] === 'T') return fecha;
+    // Si viene en ISO pero sin 'Z', se la agregamos
+    let fechaISO = fecha;
+    if (fecha.length === 19 && fecha[10] === 'T' && !fecha.endsWith('Z')) {
+        fechaISO = fecha + 'Z';
+    }
+    const d = new Date(fechaISO);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Editar tarjeta
+function editCard(cardId, title, description, priority, label, dueDate) {
+    document.getElementById('editCardId').value = cardId;
+    document.getElementById('editCardTitle').value = title;
+    document.getElementById('editCardDescription').value = description;
+    document.getElementById('editCardPriority').value = priority;
+    document.getElementById('editCardLabel').value = label;
+    document.getElementById('editCardDueDate').value = toDatetimeLocal(dueDate);
+    document.getElementById('editCardReminderDate').value = '';
+    showModal('editCardModal');
+}
+
+document.getElementById('editCardForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const cardId = document.getElementById('editCardId').value;
+    const title = document.getElementById('editCardTitle').value;
+    const description = document.getElementById('editCardDescription').value;
+    const priority = document.getElementById('editCardPriority').value;
+    const label = document.getElementById('editCardLabel').value;
+    const dueDate = document.getElementById('editCardDueDate').value;
+    const reminderDate = document.getElementById('editCardReminderDate').value;
+    const attachment = document.getElementById('editCardAttachment').files[0];
+    
+    showLoading();
+    
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('priority', priority);
+    formData.append('label', label);
+    if (dueDate) formData.append('due_date', new Date(dueDate).toISOString());
+    if (reminderDate) formData.append('reminder_date', new Date(reminderDate).toISOString());
+    if (attachment) formData.append('attachment', attachment);
+    
+    fetch(`/api/card/${cardId}`, {
+        method: 'PUT',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.error) {
+            showToast('Error: ' + data.error, 'error');
+        } else {
+            hideModal('editCardModal');
+            showToast('Tarjeta editada exitosamente', 'success');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showToast('Error al editar la tarjeta', 'error');
+        console.error('Error:', error);
+    });
+});
+
+// Eliminar tarjeta con confirmación
+function deleteCard(cardId) {
+    showConfirmModal(
+        'Eliminar Tarjeta',
+        '¿Estás seguro de que quieres eliminar esta tarjeta?',
+        function() {
+            showLoading();
+            fetch(`/api/card/${cardId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.error) {
+                    showToast('Error: ' + data.error, 'error');
+                } else {
+                    // Eliminar la tarjeta de la UI dinámicamente
+                    removeCardFromUI(cardId);
+                    showToast('Tarjeta eliminada', 'success');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                showToast('Error al eliminar la tarjeta', 'error');
+                console.error('Error:', error);
+            });
+        }
+    );
+}
+
+// Función para eliminar tarjeta dinámicamente de la UI
+function removeCardFromUI(cardId) {
+    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+    if (cardElement) {
+        cardElement.remove();
+    }
+}
+
+// Drag and Drop de listas
+function sendListOrder(boardId) {
+    const listContainers = document.querySelectorAll('.list-container');
+    const order = Array.from(listContainers).map(l => parseInt(l.getAttribute('data-list-id')));
+    fetch(`/api/board/${boardId}/lists/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: order })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Error al guardar el orden de las listas: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al guardar el orden de las listas');
+        console.error('Error:', error);
+    });
+}
+
+// Etiquetas personalizables
+let labels = [];
+const boardId = {{ board.id }};
+
+function fetchLabels() {
+    fetch(`/api/board/${boardId}/labels`)
+        .then(res => res.json())
+        .then(data => {
+            labels = data;
+            renderLabelsList();
+            renderLabelsSelect();
+        });
+}
+
+function renderLabelsList() {
+    const container = document.getElementById('labelsList');
+    container.innerHTML = '';
+    labels.forEach(label => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.gap = '1rem';
+        div.style.marginBottom = '0.5rem';
+        div.innerHTML = `
+            <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:${label.color};margin-right:0.5rem;"></span>
+            <span style="flex:1;">${label.name}</span>
+            <button class="btn btn-secondary" onclick="editLabelPrompt(${label.id})"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger" onclick="deleteLabel(${label.id})"><i class="fas fa-trash"></i></button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderLabelsSelect() {
+    // Para crear tarjeta
+    const select = document.getElementById('cardLabel');
+    if (select) {
+        select.innerHTML = '<option value="">Sin etiqueta</option>';
+        labels.forEach(label => {
+            select.innerHTML += `<option value="${label.id}" style="background:${label.color};color:#fff;">${label.name}</option>`;
+        });
+    }
+    // Para editar tarjeta
+    const selectEdit = document.getElementById('editCardLabel');
+    if (selectEdit) {
+        selectEdit.innerHTML = '<option value="">Sin etiqueta</option>';
+        labels.forEach(label => {
+            selectEdit.innerHTML += `<option value="${label.id}" style="background:${label.color};color:#fff;">${label.name}</option>`;
+        });
+    }
+}
+
+document.getElementById('createLabelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('labelName').value;
+    const color = document.getElementById('labelColor').value;
+    fetch(`/api/board/${boardId}/labels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color })
+    })
+    .then(res => res.json())
+    .then(data => {
+        fetchLabels();
+        document.getElementById('labelName').value = '';
+        document.getElementById('labelColor').value = '#667eea';
+        showToast('Etiqueta creada', 'success');
+    });
+});
+
+function deleteLabel(labelId) {
+    fetch(`/api/label/${labelId}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            fetchLabels();
+            showToast('Etiqueta eliminada', 'success');
+        });
+}
+
+function editLabelPrompt(labelId) {
+    const label = labels.find(l => l.id === labelId);
+    if (!label) return;
+    const newName = prompt('Nuevo nombre de la etiqueta:', label.name);
+    if (newName === null) return;
+    const newColor = prompt('Nuevo color (hex):', label.color);
+    if (newColor === null) return;
+    fetch(`/api/label/${labelId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, color: newColor })
+    })
+    .then(res => res.json())
+    .then(data => {
+        fetchLabels();
+        showToast('Etiqueta actualizada', 'success');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchLabels();
+});
+</script>
+{% endblock %} 

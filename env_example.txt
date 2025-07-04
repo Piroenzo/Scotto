@@ -1,0 +1,16 @@
+# Configuración de Scotto
+# Copia este archivo como .env y completa los valores
+
+# Clave secreta para Flask (genera una clave segura)
+SECRET_KEY=tu_clave_secreta_muy_segura_aqui
+
+# Configuración de Email (Gmail)
+MAIL_USERNAME=tu_email@gmail.com
+MAIL_PASSWORD=tu_contraseña_de_aplicacion
+
+# Configuración de la Base de Datos (SQLite por defecto)
+DATABASE_URL=sqlite:///scotto.db
+
+# Configuración del Servidor
+FLASK_ENV=development
+FLASK_DEBUG=True 

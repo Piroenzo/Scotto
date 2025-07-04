@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Calendario - {{ board.title }} - Scotto{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1 style="color: white; font-size: 2.5rem; margin-bottom: 0.5rem;">
+            <i class="fas fa-calendar-alt"></i> Calendario - {{ board.title }}
+        </h1>
+        {% if board.description %}
+        <p style="color: rgba(255, 255, 255, 0.8); font-size: 1.1rem;">
+            {{ board.description }}
+        </p>
+        {% endif %}
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('board', board_id=board.id) }}" class="btn btn-secondary">
+            <i class="fas fa-columns"></i> Vista Kanban
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="color: #333; font-size: 1.8rem;">
+            <i class="fas fa-clock"></i> Fechas de Vencimiento
+        </h2>
+        <div style="display: flex; gap: 0.5rem;">
+            <span class="priority-badge priority-high">Alta</span>
+            <span class="priority-badge priority-medium">Media</span>
+            <span class="priority-badge priority-low">Baja</span>
+        </div>
+    </div>
+
+    {% if cards %}
+        <div class="calendar-container">
+            {% set current_date = None %}
+            {% for card in cards %}
+                {% set card_date = card.due_date.strftime('%Y-%m-%d') %}
+                {% if card_date != current_date %}
+                    {% if current_date is not none %}
+                        </div> <!-- Cerrar el grupo anterior -->
+                    {% endif %}
+                    {% set current_date = card_date %}
+                    <div class="date-group">
+                        <h3 class="date-header">
+                            <i class="fas fa-calendar-day"></i>
+                            {{ card.due_date.strftime('%A, %d de %B de %Y') }}
+                        </h3>
+                        <div class="cards-grid">
+                {% endif %}
+                
+                <div class="calendar-card {% if card.label != 'none' %}label-{{ card.label }}{% endif %}" 
+                     onclick="window.location.href='{{ url_for('board', board_id=board.id) }}'">
+                    <div class="card-header">
+                        <div class="card-title">{{ card.title }}</div>
+                        <div class="priority-badge priority-{{ card.priority }}">
+                            {{ card.priority }}
+                        </div>
+                    </div>
+                    {% if card.description %}
+                    <div class="card-description">{{ card.description[:100] }}{% if card.description|length > 100 %}...{% endif %}</div>
+                    {% endif %}
+                    <div class="card-meta">
+                        <div>
+                            <i class="fas fa-list"></i> {{ card.list.title }}
+                        </div>
+                        <div>
+                            <i class="fas fa-clock"></i> {{ card.due_date.strftime('%H:%M') }}
+                        </div>
+                    </div>
+                    {% if card.due_date < now %}
+                        <div class="overdue-badge">
+                            <i class="fas fa-exclamation-triangle"></i> Vencida
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if current_date is not none %}
+                </div> <!-- Cerrar el último grupo -->
+            {% endif %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <div style="font-size: 4rem; color: #667eea; margin-bottom: 1rem;">
+                <i class="fas fa-calendar-times"></i>
+            </div>
+            <h3 style="margin-bottom: 1rem;">No hay fechas de vencimiento</h3>
+            <p style="color: #666; margin-bottom: 2rem;">
+                No hay tarjetas con fechas de vencimiento en este tablero
+            </p>
+            <a href="{{ url_for('board', board_id=board.id) }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Agregar Tarjetas con Fechas
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Agregar estilos específicos para el calendario
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .calendar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .date-group {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .date-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            margin: 0;
+            border-bottom: 1px solid #e1e5e9;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+        
+        .calendar-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid #667eea;
+        }
+        
+        .calendar-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-title {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            margin-right: 1rem;
+        }
+        
+        .card-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #999;
+        }
+        
+        .overdue-badge {
+            background: #e74c3c;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %} 
